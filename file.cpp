@@ -5,51 +5,88 @@
 #include <ctime>
 #include <cstring>
 #include <cmath>
+#include <new>
 
-class FonduriInsuficienteException : public std::exception {
+class FonduriInsuficienteException : public std::exception { // Clasa de exceptii
 public:
-    const char* what() const noexcept override {
-        return "Fonduri insuficiente pentru a finaliza tranzactia";
+    const char* what() const noexcept override { // Schimbam eroarea standard cu un mesaj mai simplu
+        return "Eroare fonduri: Fonduri insuficiente pentru a finaliza tranzactia";
     }
 };
 
-class ContBlocatException : public std::exception {
+class ContBlocatException : public std::exception { // Clasa de exceptii
 public:
-    const char* what() const noexcept override {
+    const char* what() const noexcept override { // Schimbam eroarea standard cu un mesaj mai simplu
         return "Operatiune refuzata: Contul este blocat";
     }
 };
 
-template <typename T>
+class EroareAlocareMemorie : public std::bad_alloc { // Clasa de exceptii
+public:
+    const char* what() const noexcept override { // Schimbam eroarea standard cu un mesaj mai simplu
+        return "Eroare alocare: Nu s-a putut aloca memoria necesara";
+    }
+};
+
+template <typename T> // Clasa Sablon
 class Registru {
 private:
-    std::vector<T> inregistrari;
+    std::vector<T> inregistrari; // Vector care memoreaza toate inregistrarile
 public:
-    void adaugaInregistrare(const T& inregistrare) {
-        inregistrari.push_back(inregistrare);
+    void adaugaInregistrare(const T& inregistrare) { // Metoda ce adauga o inregistrare in vector
+        inregistrari.push_back(inregistrare); // Folosim metoda push_back specifica cointainerului vector pentru a adauga la final
     }
-    const std::vector<T>& getInregistrari() const {
+    const std::vector<T>& getInregistrari() const { // Metoda ce retunreaza inregistrarile
         return inregistrari;
     }
-    void afiseazaTot() const {
-        for (const auto& inregistrare : inregistrari) {
+
+    void afiseazaTot() const { // Metoda ce afiseaza toate inregistrarile
+        for (const auto& inregistrare : inregistrari) { // Parcurgem cu un loop si afisam fiecare inregistrare
             std::cout << inregistrare << "\n";
         }
+    }
+
+    void stergeInregistrari() { // Metoda care Stergem toate inregistrarile
+        inregistrari.clear(); // Folosim metoda clear din cointainerul vector pentru a sterge toate inregistrarile
+    }
+
+    void stergeUltimaInregistrare() { // Metoda ce sterge ultima inregistrare
+        if (!inregistrari.empty()) { // Verificam daca vectorul nu are elemente
+            inregistrari.pop_back();
+        }
+    }
+
+    void stergeInregistrare(unsigned int pozitie) { // Metoda ce sterge o inregistrare de la un index
+        if (inregistrari.empty()) { // Verificam daca avem ce sterge
+            return;
+        }
+        if (pozitie >= inregistrari.size()) { // Daca indexul furnizat este mai mare decat nr. de inregistrari, o stergemm pe ultima
+            pozitie = inregistrari.size() - 1;
+        }
+        auto itPozitie = inregistrari.begin() + pozitie;
+        inregistrari.erase(itPozitie); // Metoda erase accepta doar iteratori
+    }
+
+    void inserareInregistrare(unsigned int pozitie, const T& inregistrare) { // Metoda ce insereaza o inregistrare la un index anume
+        if (pozitie > inregistrari.size()) { // Daca indexul e prea mare, inseram la final
+            pozitie = inregistrari.size();
+        }
+        inregistrari.insert(inregistrari.begin() + pozitie, inregistrare);
     }
 };
 
 class Tranzactie {
 private:
-    double suma;
-    std::string destinatieIBAN;
-    std::string data;
-    std::string ora;
+    double suma; // Suma tranzactiei
+    std::string destinatieIBAN; // IBAN catre care va fi trimisa suma
+    std::string data; // Data la care s-a efectuat tranzictia
+    std::string ora; // Ora ...
 public:
-    Tranzactie(double valoare, const std::string& destinatie) : suma(valoare), destinatieIBAN(destinatie) {
-        time_t timp = time(nullptr);
-        tm* timpLocal = localtime(&timp);
+    Tranzactie(double valoare, const std::string& destinatie) : suma(valoare), destinatieIBAN(destinatie) { // Constructor
+        time_t timp = time(nullptr); // Folosim functie time din biblioteca ctime pentru a determina timpul
+        tm* timpLocal = localtime(&timp); // Folosim localtime pentru a determina timpul de pe calculatorul nostru
 
-        int an = timpLocal->tm_year + 1900;
+        int an = timpLocal->tm_year + 1900; // Facem conversiile (i.e anii incep de la 1900, deci trebuie prelucrat)
         int luna = timpLocal->tm_mon + 1;
         int zi = timpLocal->tm_mday;
         int oraCurenta = timpLocal->tm_hour;
@@ -58,74 +95,93 @@ public:
 
         data = std::to_string(an) + "/";
 
-        if (luna < 10) {
+        if (luna < 10) { // Daca luna < 10, adaugam un 0
             data += "0";
         }
         data += std::to_string(luna) + "/";
 
-        if (zi < 10) {
+        if (zi < 10) { // Daca ziua < 10, adaugam un 0
             data += "0";
         }
         data += std::to_string(zi);
 
-        if (oraCurenta < 10) {
+        if (oraCurenta < 10) { // Daca ora < 10, adaugam un 0
             ora = "0";
         } else {
             ora = "";
         }
         ora += std::to_string(oraCurenta) + ":";
 
-        if (minut < 10) {
+        if (minut < 10) { // Daca minutul < 10, adaugam un 0
             ora += "0";
         }
         ora += std::to_string(minut) + ":";
 
-        if (secunda < 10) {
+        if (secunda < 10) { // Daca secunda < 10, adaugam un 0
             ora += "0";
         }
         ora += std::to_string(secunda);
     }
 
-    std::string getDestinatie() const { return destinatieIBAN; }
-    double getSuma() const { return suma; }
-    std::string getData() const { return data; }
-    std::string getOra() const { return ora; }
+    std::string getDestinatie() const { return destinatieIBAN; } // Getter pentru destinatieIBAN
+    double getSuma() const { return suma; } // Getter pentru suma
+    std::string getData() const { return data; } // Getter pentru data curenta
+    std::string getOra() const { return ora; } // Getter pentru ora curenta
 
-    friend std::ostream& operator<<(std::ostream& out, const Tranzactie& t) {
-        out << "Catre: " << t.getDestinatie()
-            << " | Suma: " << t.getSuma()
-            << " | Data: " << t.data << " " << t.ora;
+    friend std::ostream& operator<<(std::ostream& out, const Tranzactie& t) { // Overload pe operator<< pentru afisare a unei tranzactii
+        out << "Catre: " << t.getDestinatie() // Afisam IBAN-ul destinatie
+            << " | Suma: " << t.getSuma() // Afisam suma
+            << " | Data: " << t.data << " " << t.ora; // Afisam data la care a avut loc tranzactia
         return out;
     }
 };
 
-class Client {
+class Client { // Clasa Client
 private:
-    char* nume;
-    unsigned long long CNP;
+    char* nume; // Numele clientului
+    unsigned long long CNP; // CNP-ul clientului
+    bool areCNPvalid; // Validitatea CNP-ului
 
-    bool validareCNP(unsigned long long cnp) {
+    bool validareCNP(unsigned long long cnp) { // Metoda privata ce determina daca un CNP este valid
+        // Format CNP: SAALLZZJJNNNC - 13 cifre
+        // Rol: Valideaza un CNP, mai multe detalii la: https://ro.wikipedia.org/wiki/Cod_numeric_personal_(Rom%C3%A2nia)
         unsigned long long copieCNP = cnp / 10;
-        if (cnp < 1000000000000ULL || cnp >= 10000000000000ULL) return false;
-        unsigned short int CifraControl = cnp % 10;
+
+        if (cnp < 1000000000000ULL || cnp >= 10000000000000ULL) { // Contine DOAR 13 Cifre
+            return 0;
+        }
+
+        unsigned short int CifraControl = cnp % 10; // Salvam C intr-o variabila pentru a fi ulterior verificat
         cnp /= 10;
-        if (cnp % 1000 == 0) return false;
-        cnp /= 1000;
-        unsigned short int JJ = cnp % 100;
-        if (JJ != 51 && JJ != 52 && JJ != 70 && (JJ < 1 || JJ > 48)) return false;
+
+        if (cnp % 1000 == 0) return 0;
+        cnp /= 1000; // Taiem NNN (NNN apartine intervalului [1, 999])
+
+        unsigned short int JJ = cnp % 100; // Salvam JJ = Cod Judet
+        if (JJ != 51 && JJ != 52 && JJ != 70 && (JJ < 1 || JJ > 48)) {
+            return 0;
+        }
         cnp /= 100;
-        if (cnp % 100 < 1 || cnp % 100 > 31) return false;
+
+        if (cnp % 100 < 1 || cnp % 100 > 31) return 0; // Validam Luna
         cnp /= 100;
-        unsigned short int LL = cnp % 100;
-        if (LL < 1 || LL > 12) return false;
+
+        unsigned short int LL = cnp % 100; // Salvam LL = Luna
+        if (LL < 1 || LL > 12) return 0;
         cnp /= 100;
-        unsigned short int AA = cnp % 100;
+
+        unsigned short int AA = cnp % 100; // Salvam AA = An
         cnp /= 100;
-        unsigned short int S = cnp % 100;
-        if ((JJ == 47 || JJ == 48) && LL >= 8 && AA >= 79) return false;
-        if (S != 1 && S != 2 && S != 5 && S != 6) return false;
-        if ((S == 5 || S == 6) && AA > 26) return false;
-        unsigned long long validC = 0;
+
+        unsigned short int S = cnp % 100; // Salvam S
+
+        // Caz particular: Sectorul 7 si 8 desfiintate in August 1979
+        if ((JJ == 47 || JJ == 48) && LL >= 8 && AA >= 79) return 0;
+
+        if (S != 1 && S != 2 && S != 5 && S != 6) return 0; // Validam S
+        if ((S == 5 || S == 6) && AA > 26) return 0; // Cineva nascut dupa 2000 nu poate avea ult. 2 cif. din an > 26
+
+        unsigned long long validC = 0; // Validam C
         unsigned long long CONST = 279146358279ULL;
         while (copieCNP) {
             validC += (copieCNP % 10) * (CONST % 10);
@@ -133,80 +189,132 @@ private:
             copieCNP /= 10;
         }
         validC %= 11;
-        if (validC < 10 && CifraControl != validC) return false;
-        if (validC == 10 && CifraControl != validC - 9) return false;
-        return true;
+        if (validC < 10 && CifraControl != validC) return 0;
+        if (validC == 10 && CifraControl != validC - 9) return 0;
+
+        return 1; // Daca am ajuns aici, CNP-ul este VALID
     }
 
 public:
-    Client(const char* numeClient, unsigned long long cnp) {
-        if (numeClient != nullptr) {
-            nume = new char[strlen(numeClient) + 1];
-            strcpy(nume, numeClient);
-        } else {
-            nume = nullptr;
+    Client(const char* numeClient, unsigned long long cnp) { // Constructor
+        if (numeClient != nullptr) { // Determinam daca numele clientului este valid
+            try {
+                nume = new char[strlen(numeClient) + 1]; // Incercam sa alocam memorie
+                strcpy(nume, numeClient);
+            }
+            catch (const std::bad_alloc& e) {
+                nume = nullptr; // Daca alocarea esueaza, nume devine nullptr si afisam un mesaj specific
+                std::cout << e.what() << std::endl;
+            }
         }
-        CNP = (validareCNP(cnp) ? cnp : 0);
+        else {
+            nume = nullptr; // Daca numele nu e valid, nume devine nullptr
+        }
+        CNP = (validareCNP(cnp) ? cnp : 0); // Verificam validitatea CNP-ului
+        if (CNP == 0)
+            areCNPvalid = false;
+        else
+            areCNPvalid = true;
     }
 
-    ~Client() {
-        if (nume != nullptr) {
+    ~Client() { // Destructor
+        if (nume != nullptr) { // Eliberam memoria alocata
             delete[] nume;
         }
     }
 
-    Client(const Client& c) {
-        if (c.nume != nullptr) {
-            nume = new char[strlen(c.nume) + 1];
-            strcpy(nume, c.nume);
-        } else {
-            nume = nullptr;
+    Client(const Client& c) { // Costructor de copiere
+        if (c.nume != nullptr) { // Determinam daca numele clientului este valid
+            try {
+                nume = new char[strlen(c.nume) + 1]; // Incercam sa alocam memorie
+                strcpy(nume, c.nume);
+            }
+            catch (const std::bad_alloc& e) {
+                nume = nullptr; // Daca alocarea esueaza, nume devine nullptr si afisam un mesaj specific
+                std::cout << e.what() << std::endl;
+            }
         }
-        CNP = c.CNP;
+        else {
+            nume = nullptr; // Daca numele nu e valid, nume devine nullptr
+        }
+        CNP = c.CNP; // Atribuim CNP-ul
+        areCNPvalid = c.areCNPvalid;
     }
 
-    Client& operator=(Client c) {
-        swap(*this, c);
+    Client& operator=(Client c) { // Overloading pe operator=
+        // Am folosit Copy and Swap Idiom
+        // Transmitem Clinetul prin valoare si facem swap in functie
+        // Astfel, evitam erorile de copiere partiala
+        swap(*this, c); // Functie de swap intre 2 clienti
         return *this;
     }
 
-    friend void swap(Client& unu, Client& doi) {
-        std::swap(unu.nume, doi.nume);
-        std::swap(unu.CNP, doi.CNP);
+    bool esteCNPvalid() const { return areCNPvalid; } // Metoda ce returneaza validitatea CNP-ului
+    unsigned long long getCNP() const { return CNP; } // Metoda ce returneaza CNP-ul
+    const char* getNume() const { return nume; } // Metoda ce returneaza numele
+
+    void schimbaNume(const char* numeClient) {
+        char *numeAuxiliar = nullptr;
+        if (numeClient != nullptr) { // Determinam daca numele clientului este valid
+            try {
+                numeAuxiliar = new char[strlen(numeClient) + 1]; // Incercam sa alocam memorie
+                strcpy(numeAuxiliar, numeClient);
+            }
+            catch (const std::bad_alloc& e) {
+                std::cout << e.what() << std::endl; // Daca nu a functionat, afisam  un mesaj specific
+            }
+            delete[] nume;
+            nume = numeAuxiliar;
+        }
+        else {
+            return;
+        }
     }
 
-    friend std::ostream& operator<<(std::ostream& out, const Client& c) {
+    friend void swap(Client& unu, Client& doi) { // Metoda ce interschimba 2 clienti
+        std::swap(unu.nume, doi.nume); // Facem swap pe fiecare membru
+        std::swap(unu.CNP, doi.CNP);
+        std::swap(unu.areCNPvalid, doi.areCNPvalid);
+    }
+
+    friend std::ostream& operator<<(std::ostream& out, const Client& c) { // Overloading pe operator<<
         out << "Nume Client: " << (c.nume ? c.nume : "Fara nume") << "\n"
             << "CNP: " << c.CNP;
         return out;
     }
 };
 
-class Cont {
+class Cont { // Clasa de baza Cont
 protected:
-    std::string iban;
-    Client detinator;
-    double sold;
-    bool esteBlocat;
-    Registru<Tranzactie> istoricTranzactii;
+    std::string iban; // IBAN-ul contului
+    Client detinator; // Clientul ce detine contul
+    double sold; // Soldul contului
+    bool esteBlocat; // Data membra folosita pentru a salva stadiul curent al contului
+    Registru<Tranzactie> istoricTranzactii; // Istoricul de tranzactii
 
-    std::string genereazaIban() {
+    std::string genereazaIban() { // Metoda ce genereaza un IBAN valid matematic
+        // Generam un cod de banca fictiv format din 4 litere (ex: BTRL, BCRX)
         std::string codBanca = "";
         for (int i = 0; i < 4; ++i) {
             char litera = 'A' + (rand() % 26);
             codBanca += litera;
         }
 
+        // Generam numarul de cont propriu-zis, format din 16 cifre aleatoare
         std::string numarCont = "";
         for (int i = 0; i < 16; ++i) {
             numarCont += std::to_string(rand() % 10);
         }
 
+        // Pregatim datele pentru a calcula Cifra de Control (Checksum)
         std::string codTara = "RO";
-        std::string checksumFals = "00";
+        std::string checksumFals = "00"; // In algoritmul IBAN, initial se folosesc "00"
 
+        // Pentru calcul, codul de tara si checksum-ul se muta la finalul sirului
         std::string sirMod97 = codBanca + numarCont + codTara + checksumFals;
 
+        // Convertim caracterele in format pur numeric
+        // Literele primesc valori de la 10 la 35 (A=10, B=11 ... Z=35)
         std::string sirNumeric = "";
         for (size_t i = 0; i < sirMod97.length(); ++i) {
             char caracterCurent = sirMod97[i];
@@ -214,59 +322,75 @@ protected:
                 int valoareNumerica = caracterCurent - 'A' + 10;
                 sirNumeric += std::to_string(valoareNumerica);
             } else if (caracterCurent >= '0' && caracterCurent <= '9') {
-                sirNumeric += caracterCurent;
+                sirNumeric += caracterCurent; // Cifrele raman la fel
             }
         }
 
+        // Aplicam algoritmul Modulo 97 (impartirea cu rest la 97)
+        // Deoarece numarul rezultat are 26 de cifre si depaseste limita oricarui tip de date int/long,
+        // calculam restul parcurgand string-ul cifra cu cifra
         int rest = 0;
         for (size_t i = 0; i < sirNumeric.length(); ++i) {
             int cifra = sirNumeric[i] - '0';
             rest = (rest * 10 + cifra) % 97;
         }
 
+        // Calculam Cifra de Control finala conform formulei IBANului
         int checksumCurent = 98 - rest;
 
+        // Ne asiguram ca checksum-ul are mereu 2 caractere (daca e < 10, ii adaugam un '0' in fata)
         std::string cifraDeControl;
         if (checksumCurent < 10) {
             cifraDeControl = "0" + std::to_string(checksumCurent);
         } else {
             cifraDeControl = std::to_string(checksumCurent);
         }
-
+        
+        // Facem concatenare pentru a afisa IBAN-ul in formatul corect
         std::string ibanComplet = codTara + cifraDeControl + codBanca + numarCont;
 
         return ibanComplet;
     }
 
 public:
-    Cont(const Client& detinatorCont, double soldInitial)
+    Cont(const Client& detinatorCont, double soldInitial) // Constructor
         : detinator(detinatorCont), sold(soldInitial), esteBlocat(false) {
         iban = genereazaIban();
     }
 
-    virtual ~Cont() {}
+    virtual ~Cont() {} // Destructor virtual
 
-    virtual void depune(double suma) = 0;
-    virtual void retrage(double suma) = 0;
-    virtual Cont* cloneaza() const = 0;
-    virtual double estimeazaSoldViitor(int ani) const = 0;
-    const Client& getDetinator() { return detinator; }
+    virtual void depune(double suma) = 0; // Metoda pura pentru depuneri
+    virtual void retrage(double suma) = 0; // Metoda pura pentru retrageri
+    virtual Cont* cloneaza() const = 0; // Metoda pura pentru clonarea obiectului (fiecare obiect trebuie sa stie cum sa se copieze)
+    virtual double estimeazaSoldViitor(int ani) const = 0; // Metoda ce estimeaza soldul din contul respectiv
 
-    std::string getIban() const { return iban; }
-    void blocheazaCont() { esteBlocat = true; }
+    const Client& getDetinator() const { return detinator; } // Getter pentru detinator
+    bool esteContBlocat() const { return esteBlocat; } // Getter pentru stadiul contului
+    double getSold() const { return sold; } // Getter pentru sold
+    std::string getIban() const { return iban; } // Getter pentru IBAN
 
-    void adaugaTranzactieIstoric(const Tranzactie& t) {
-        istoricTranzactii.adaugaInregistrare(t);
+    void blocheazaCont() { esteBlocat = true; } // Metoda ce blocheaza contul
+    void deblocheazaCont() { esteBlocat = false; } // Metoda ce deblocheaza contul
+
+    void adaugaTranzactieIstoric(const Tranzactie& t) { // Metoda ce adauga o tranzactie la istoric
+        istoricTranzactii.adaugaInregistrare(t); // Folosim metode specifice din clasa Registru<Tranzactie>
     }
 
-    bool verificaAlertaFrauda() {
-        const auto& tranzactii = istoricTranzactii.getInregistrari();
+    void actualizeazaTranzactieIstoric(const Registru<Tranzactie>& t) { // Metoda ce sterge istoricul de tranzactii si il inlocuieste cu altul
+        istoricTranzactii.stergeInregistrari(); // Stergem tranzactiile
+        for (const auto& tranzactie : t.getInregistrari()) // Parcurgem vectorul nou de tranzactii
+            istoricTranzactii.adaugaInregistrare(tranzactie);
+    }
 
-        if (tranzactii.size() >= 5) {
+    bool verificaAlertaFrauda() { // Metoda ce verifica daca unui cont i s-au facut tranzactii frauduloase
+        const auto& tranzactii = istoricTranzactii.getInregistrari(); // Determinam tranzactiile
+
+        if (tranzactii.size() >= 5) { // Luam ultimile cele mai recente tranzactii
             auto it = tranzactii.rbegin();
 
-            std::string ultimaDestinatie = it->getDestinatie();
-            std::string ultimaData = it->getData();
+            std::string ultimaDestinatie = it->getDestinatie(); // Determinam contul unde s-au trimis suma
+            std::string ultimaData = it->getData(); // Determinam data
             std::string ultimaOra = it->getOra();
 
             char anUltim[5] = {ultimaData[0], ultimaData[1], ultimaData[2], ultimaData[3], '\0'};
@@ -275,7 +399,7 @@ public:
             char oraUltima[3] = {ultimaOra[0], ultimaOra[1], '\0'};
             char minutUltim[3] = {ultimaOra[3], ultimaOra[4], '\0'};
 
-            int contorTranzactiiSimilare = 0;
+            int contorTranzactiiSimilare = 0; // Contor pentru a numara cate astfel de tranzactii au avut loc
 
             for (int i = 0; i < 5; ++i) {
                 std::string destinatieCurenta = it->getDestinatie();
@@ -288,7 +412,7 @@ public:
                 char oraCurentaArr[3] = {oraCurenta[0], oraCurenta[1], '\0'};
                 char minutCurent[3] = {oraCurenta[3], oraCurenta[4], '\0'};
 
-                bool acelasiMinut = true;
+                bool acelasiMinut = true; // Facem verificarile necesare (aceasi data, aceasi zi, acelasi minut)
 
                 for (int j = 0; j < 4; j++) {
                     if (anUltim[j] != anCurent[j]) {
@@ -311,21 +435,21 @@ public:
                     }
                 }
 
-                if (destinatieCurenta == ultimaDestinatie && acelasiMinut == true) {
-                    contorTranzactiiSimilare++;
+                if (destinatieCurenta == ultimaDestinatie && acelasiMinut == true) { // Daca se constata ca suma a mers la acelasi cont,
+                    contorTranzactiiSimilare++;                                      // incrementam contorul
                 }
 
                 ++it;
             }
 
-            if (contorTranzactiiSimilare == 5) {
-                return true;
+            if (contorTranzactiiSimilare == 5) { // Daca in ultimul minut s-au efectuat 5 tranzactii diferite catre acelasi cont
+                return true;                     // returnam true, ceea ce inseamna ca au avut loc tranzactii frauduloase
             }
         }
         return false;
     }
 
-    friend std::ostream& operator<<(std::ostream& out, const Cont& c) {
+    friend std::ostream& operator<<(std::ostream& out, const Cont& c) { // Overloading pe operator<<
         out << "Date Cont:\n"
             << "IBAN: " << c.iban << "\n"
             << "Sold: " << c.sold << " RON\n"
@@ -335,167 +459,223 @@ public:
     }
 };
 
-class ContEconomii : public Cont {
+class ContEconomii : public Cont { // Clasa mostenita din clasa de baza Cont
 private:
     double rataDobanda;
 public:
-    ContEconomii(const Client& detinator, double sold, double rata)
+    ContEconomii(const Client& detinator, double sold, double rata) // Constructor
         : Cont(detinator, sold), rataDobanda(rata) {}
 
-    void depune(double suma) override {
-        if (esteBlocat) throw ContBlocatException();
+    void depune(double suma) override { // Metoda depunere specifica clasei
+        if (esteBlocat) throw ContBlocatException(); // Daca contul este blocat in urma unei fraude, aruncam o exceptie
         if (suma > 0)
-            sold += suma;
+            sold += suma; // Adaugam suma in sold
     }
 
-    void retrage(double suma) override {
-        if (esteBlocat) throw ContBlocatException();
-        if (sold < suma) throw FonduriInsuficienteException();
-        if (suma < 0) return;
+    void retrage(double suma) override { // Metoda retragere specifica clasei
+        if (esteBlocat) throw ContBlocatException(); // Daca contul este blocat in urma unei fraude, aruncam o exceptie
+        if (sold < suma) throw FonduriInsuficienteException(); // Daca soldul este negativ, nu putem extrage
+        if (suma < 0) return; // Daca suma depusa este negativa, nu se intampla retragerea
         sold -= suma;
     }
 
-    Cont* cloneaza() const override {
-        return new ContEconomii(*this);
+    void schimbaRataDobanda(double rata) { // Metoda ce schimba rata dobanzii
+        if (rata > 0) {
+            rataDobanda = rata;
+        }
     }
 
-    double estimeazaSoldViitor(int ani) const override {
-        return sold * std::pow((1.0 + rataDobanda), ani);
+    Cont* cloneaza() const override { // Metoda ce cloneaza obiectul (fiecare obiect trebuie sa stie cum sa se copieze)
+        return new ContEconomii(*this); // Returnam obiectul
+    }
+
+    double estimeazaSoldViitor(int ani) const override { // Metoda ce determina soldul peste un numar de ani
+        return sold * std::pow((1.0 + rataDobanda), ani); // A = (1 + r)^n (formula pentru dobanda compusa)
     }
 };
 
-class ContCredit : public Cont {
+class ContCredit : public Cont { // Clasa mostenita din clasa de baza Cont
 private:
     double limitaCredit;
 public:
-    ContCredit(const Client& detinator, double sold, double limita)
+    ContCredit(const Client& detinator, double sold, double limita) // Constructor
         : Cont(detinator, sold), limitaCredit(limita) {}
 
-    void depune(double suma) override {
-        if (esteBlocat) throw ContBlocatException();
+    void depune(double suma) override { // Metoda depunere specifica clasei
+        if (esteBlocat) throw ContBlocatException(); // Daca contul este blocat in urma unei fraude, aruncam o exceptie
         sold += suma;
     }
 
-    void retrage(double suma) override {
-        if (esteBlocat) throw ContBlocatException();
+    void retrage(double suma) override {  // Metoda retragere specifica clasei
+        if (esteBlocat) throw ContBlocatException(); // Daca contul este blocat in urma unei fraude, aruncam o exceptie
         if (sold + limitaCredit < suma) throw FonduriInsuficienteException();
+        // Daca suma este mai mare decat suma curenta din sold si depaseste de asemenea si limita de credit, aruncam o exceptie
         sold -= suma;
     }
 
-    Cont* cloneaza() const override {
-        return new ContCredit(*this);
+    Cont* cloneaza() const override { // Metoda ce cloneaza obiectul (fiecare obiect trebuie sa stie cum sa se copieze)
+        return new ContCredit(*this); // Returnam obiectul
     }
 
-    double estimeazaSoldViitor(int ani) const override {
-        double dobandaPenalizare = 0.15;
+    double estimeazaSoldViitor(int ani) const override { // Metoda ce estimeaza suma din sold peste un numar de ani
+        double dobandaPenalizare = 0.15; // Conturile de credit nu sunt conturi de economii, suma ramane aceasi
+        // Eventaul, daca creditul este negativ, se aplica sactiuni
         if (sold < 0) {
-            return sold * std::pow((1.0 + dobandaPenalizare), ani);
+            return sold * std::pow((1.0 + dobandaPenalizare), ani); // A = (1 + r)^n (formula pentru dobanda compusa)
         }
         return sold;
     }
 
-    void actualizeazaLimitaCredit(double limitaNoua) {
+    void actualizeazaLimitaCredit(double limitaNoua) { // Metoda ce actualizeaza linia de credit
         if (limitaNoua > 0)
             limitaCredit = limitaNoua;
     }
 };
 
-enum TipCont {
+enum TipCont { // Enumeratie folosita la crerea conturilor
     CONT_ECONOMIE,
     CONT_CREDIT
 };
 
-class ContFactory {
+class ContFactory { // Clasa ContFactory  (design pattern, Factory)
 public:
     Cont* creeazaCont(TipCont tip, const Client& detinator, double sold) {
+        // Folosim metoda creeazaCont pentru a genera un tip anume de cont
+        if (!detinator.esteCNPvalid()) { // Un cont nou poate fi creat cu un CNP invalid
+            throw std::invalid_argument("Tip de client nesuportat (CNP invalid)");
+        }
         if (tip == CONT_ECONOMIE) {
             return new ContEconomii(detinator, sold, 0.04);
         }
         else if (tip == CONT_CREDIT) {
             return new ContCredit(detinator, sold, 3000.0);
         }
-        throw std::invalid_argument("Tip de cont nesuportat");
+        throw std::invalid_argument("Tip de cont nesuportat"); // Aruncam o exceptie daca tipul de cont nu este cunoscut
     }
 };
 
-class SistemBancar {
+class SistemBancar { // Clasa SitemBancar (design pattern, Singleton)
 private:
-    static SistemBancar* instanta;
-    std::vector<Cont*> conturi;
-    Registru<std::string> jurnalSistem;
+    static SistemBancar* instanta; // Unica instanta a sistemului bancar
+    std::vector<Cont*> conturi; // Vector ce contine toate conturile deschise
+    Registru<std::string> jurnalSistem; // Jurnalul sistemului
 
-    SistemBancar() {}
-    SistemBancar(const SistemBancar&) = delete;
-    SistemBancar& operator=(const SistemBancar&) = delete;
+    SistemBancar() {} // Constructor privat
+    SistemBancar(const SistemBancar&) = delete; // Constructor de copiere sters
+    SistemBancar& operator=(const SistemBancar&) = delete; // Operator= sters
 
 public:
-    static SistemBancar* getInstanta() {
+    static SistemBancar* getInstanta() { // Functie ce returneaza unica instanta a sistemului bancar
         if (instanta == nullptr) {
             instanta = new SistemBancar();
         }
         return instanta;
     }
 
-    ~SistemBancar() {
+    ~SistemBancar() { // Destructor pentru vector
         for (Cont* cont : conturi) {
             delete cont;
         }
         conturi.clear();
     }
 
-    void adaugaCont(Cont* cont) {
-        conturi.push_back(cont);
-        jurnalSistem.adaugaInregistrare("A fost adaugat un cont in sistem: " + cont->getIban());
+    void adaugaCont(Cont* cont) { // Metoda ce adauga un cont in sistemul bancar
+        if (!cont->getDetinator().esteCNPvalid()) { // Daca CNP-ul nu este valid, nu adaugam contul
+            jurnalSistem.adaugaInregistrare("Nu s-a putut efectua adaugarea contului (client cu date invalide)"); // Scriem informatia in jurnalul de sistem
+            return;
+        }
+        conturi.push_back(cont); // Daca CNP-ul este valid, adaugam contul
+        jurnalSistem.adaugaInregistrare("A fost adaugat un cont in sistem: " + cont->getIban()); // Scriem informatia ...
     }
 
-    void transferaFonduri(const std::string& dinIban, const std::string& catreIban, double suma) {
+    void eliminaCont(Cont* cont) { // Metoda pentru eliminarea unui cont
+        for (auto it = conturi.begin(); it != conturi.end(); it++) {
+            const Cont* contAux = *it;
+            if (contAux == cont && cont->getSold() == 0) {
+                jurnalSistem.adaugaInregistrare("Contul cu IBAN-ul " + cont->getIban() + " a fost sters");
+                delete cont;
+                it = conturi.erase(it);
+                return;
+            }
+        }
+        jurnalSistem.adaugaInregistrare("Nu s-a efectuat stergerea unui cont (nu se afla in baza de date)");
+    }
+
+    void eliminaContDupaCNP(unsigned long long cnp, unsigned long long numarConturi = 1) { // Metoda ce elimina conturi dupa CNP
+        unsigned long long copie = numarConturi;
+        for (auto it = conturi.begin(); it != conturi.end() && numarConturi > 0; ) {
+            const Cont* cont = *it;
+            if (cont->getDetinator().getCNP() == cnp && cont->getSold() == 0) { // Daca am gasit un cont cu acealasi CNP si sold 0 il stergem
+                delete cont;
+                it = conturi.erase(it);
+                numarConturi--;
+            }
+            else {
+                it++;
+            }
+        }
+        if (numarConturi == 0) { // Actualizam jurnalul
+            jurnalSistem.adaugaInregistrare("Toate conturile cu CNP-ul " + std::to_string(cnp) + " au fost sterse");
+        }
+        else if (copie - numarConturi > 0) {
+            jurnalSistem.adaugaInregistrare("Din cauza soldului necorespunzator, nu toate conturile au putut fi sterse");
+        }
+        else if (numarConturi == copie) {
+            jurnalSistem.adaugaInregistrare("Nu s-au gasit conturi asociate cu CNP-ul respectiv");
+        }
+    }
+
+    void transferaFonduri(const std::string& dinIban, const std::string& catreIban, double suma) { // Metoda ce transfera fonduri de la un cont la altul
         Cont* contSursa = nullptr;
         Cont* contDestinatie = nullptr;
 
-        for (Cont* c : conturi) {
+        for (Cont* c : conturi) { // Verificam daca gasim conturi cu IBAN-urile respective
             if (c->getIban() == dinIban) contSursa = c;
             if (c->getIban() == catreIban) contDestinatie = c;
         }
 
-        if (contSursa == nullptr && contDestinatie == nullptr) {
+        if (contSursa == nullptr && contDestinatie == nullptr) { // Actualizam jurnaulul daca nu a reusit transferul
             jurnalSistem.adaugaInregistrare("Transfer esuat: Ambele IBAN-uri sunt invalide (" + dinIban + " si " + catreIban + ")");
             return;
         }
 
-        if (contSursa == nullptr) {
+        if (contSursa == nullptr) { // Actualizam jurnaulul daca nu a reusit transferul
             jurnalSistem.adaugaInregistrare("Transfer esuat: IBAN sursa invalid (" + dinIban + ")");
             return;
         }
 
-        if (contDestinatie == nullptr) {
+        if (contDestinatie == nullptr) { // Actualizam jurnaulul daca nu a reusit transferul
             jurnalSistem.adaugaInregistrare("Transfer esuat: IBAN destinatie invalid (" + catreIban + ")");
             return;
         }
 
+        // Retragem suma din contul sursa
         contSursa->retrage(suma);
 
         try {
+            // Adaugam suma in contul destinatie
             contDestinatie->depune(suma);
             contSursa->adaugaTranzactieIstoric(Tranzactie(suma, catreIban));
             jurnalSistem.adaugaInregistrare("Transfer finalizat: " + std::to_string(suma) + " RON");
-        } catch (...) {
+        }
+        catch (...) { // Prindem daca o eroare are loc
             contSursa->depune(suma);
             jurnalSistem.adaugaInregistrare("Eroare depunere. Am restabilit soldul pentru: " + dinIban);
-            throw;
+            throw; // Aruncam mai departe eroarea
         }
     }
 
-    void actualizeazaToateLimiteleCredit(double nouaLimita) {
+    void actualizeazaToateLimiteleCredit(double nouaLimita) { // Metoda ce actualizeaza limita de credit pentru conutrile de credit
         for (Cont* cont : conturi) {
-            ContCredit* contCred = dynamic_cast<ContCredit*>(cont);
+            ContCredit* contCred = dynamic_cast<ContCredit*>(cont); // Facem dynamic_cast pentru a verifica daca contul este unul de credit
             if (contCred != nullptr) {
-                contCred->actualizeazaLimitaCredit(nouaLimita);
+                contCred->actualizeazaLimitaCredit(nouaLimita); // Actualizam linia de credit
                 jurnalSistem.adaugaInregistrare("Limita de credit actualizata pentru: " + contCred->getIban());
             }
         }
     }
 
-    void ruleazaDetectieFrauda() {
+    void ruleazaDetectieFrauda() { // Metoda ce detecteaza eventualele fraude
         for (Cont* cont : conturi) {
             if (cont->verificaAlertaFrauda()) {
                 cont->blocheazaCont();
@@ -504,70 +684,114 @@ public:
         }
     }
 
-    void printeazaJurnal() const {
+    void printeazaJurnal() const { // Metoda ce afiseaza jurnalul de sistem al bancii
         std::cout << "\nJURNAL SISTEM:\n";
         jurnalSistem.afiseazaTot();
         std::cout << "\n\n";
     }
 
-    Cont* extrageContDupaIndex(size_t index) {
+    Cont* extrageContDupaIndex(unsigned long long index) { // Metoda ce extrage un cont dupa indexul sau
         if (index < conturi.size()) return conturi[index];
         return nullptr;
     }
 };
 
-SistemBancar* SistemBancar::instanta = nullptr;
+SistemBancar* SistemBancar::instanta = nullptr; // Instantierea initiala a sistemlui bancar
 
-template <typename T>
-void genereazaRaport(const T& entitate, const std::string& titluRaport) {
+template <typename T> // Functie template
+void genereazaRaport(const T& entitate, const std::string& titluRaport) { // Afiseaza un raport al unei entitati (i.e tranzactii, string)
     std::cout << "RAPORT: " << titluRaport << "\n";
     std::cout << entitate << "\n\n";
 }
 
 int main() {
-    srand(static_cast<unsigned int>(time(nullptr)));
+    srand((time(0)));
 
+    // Initializam sistemul bancar
     SistemBancar* banca = SistemBancar::getInstanta();
+    // Initalizam Factory-ul
     ContFactory factory;
 
-    Client client1("Mihai Popescu", 5010203123456ULL);
-    Client client2("Elena Ionescu", 6020304234567ULL);
+    // Creem clienti
+    std::vector<Client> clienti = {
+        Client("Mihai Popescu", 1900515410010ULL), // Valid
+        Client("Elena Ionescu", 2920820410021ULL), // Valid
+        Client("Fraudulescu Ion", 5010203123456ULL), // Invalid
+        Client("Andrei Vasile", 5051210011230ULL), // Valid
+        Client("Maria Radu", 6080417124563ULL), // Valid
+        Client("Gigel Nesuportat", 6020304234567ULL), // Invalid
+        Client("Ion Georgescu", 1851125229994ULL), // Valid
+        Client("Ana Dumitru", 2700101351111ULL), // Valid
+        Client("Vasile Lupu", 1990909415558ULL), // Valid
+        Client("Cristina Stan", 2880228083338ULL) // Valid
+    };
 
-    Cont* contEco = factory.creeazaCont(CONT_ECONOMIE, client1, 5000.0);
-    Cont* contCred = factory.creeazaCont(CONT_CREDIT, client2, 1000.0);
+    std::vector<TipCont> tipuriCont = { // Adaguam tipuri de conturi pentru fiecare client
+        CONT_ECONOMIE, CONT_CREDIT, CONT_ECONOMIE, CONT_CREDIT, CONT_ECONOMIE,
+        CONT_CREDIT, CONT_ECONOMIE, CONT_CREDIT, CONT_ECONOMIE, CONT_ECONOMIE
+    };
 
-    banca->adaugaCont(contEco);
-    banca->adaugaCont(contCred);
+    std::vector<double> solduri = { // Adaumga solduri pentu fiecare client
+        5000.0, 1000.0, 2000.0, 1500.0, 8000.0,
+        3000.0, 4500.0, 2500.0, 6000.0, 7000.0
+    };
 
+    // Creem conturile
+    for (size_t i = 0; i < clienti.size(); ++i) {
+        try {
+            Cont* contNou = factory.creeazaCont(tipuriCont[i], clienti[i], solduri[i]);
+            banca->adaugaCont(contNou);
+            std::cout << "Cont deschis pentru: " << (clienti[i].getNume() ? clienti[i].getNume() : "Nume invalud") << "\n";
+        }
+        catch (const std::exception& e) {
+            std::cout << "Nu s-a deschis cont pentru " << (clienti[i].getNume() ? clienti[i].getNume() : "Nume invalid")
+                      << ": " << e.what() << "\n";
+        }
+    }
+
+
+    // Actualizam linia de credit pentru cardurile de credit
     banca->actualizeazaToateLimiteleCredit(5000.0);
 
-    std::string ibanEco = contEco->getIban();
-    std::string ibanCred = contCred->getIban();
+    // Extragem primele doua conturi valide din sistemul bancar pentru a vedea rolul tranzactii
+    Cont* contEco = banca->extrageContDupaIndex(0);
+    Cont* contCred = banca->extrageContDupaIndex(1);
 
-    try {
-        banca->transferaFonduri(ibanEco, ibanCred, 250.0);
-        banca->transferaFonduri(ibanEco, ibanCred, 300.0);
-        banca->transferaFonduri(ibanEco, ibanCred, 100.0);
-        banca->transferaFonduri("RO99FALS123", ibanCred, 50.0);
+    if (contEco != nullptr && contCred != nullptr) {
+        std::string ibanEco = contEco->getIban(); // Luam primul IBAN
+        std::string ibanCred = contCred->getIban(); // Luam al doilea IBAN
+
+        std::cout << "\n";
+        try {
+            banca->transferaFonduri(ibanEco, ibanCred, 250.0); // Efectuam un trasnfer de fonduri
+            banca->transferaFonduri(ibanEco, ibanCred, 300.0);
+            banca->transferaFonduri(ibanEco, ibanCred, 100.0);
+            banca->transferaFonduri("RO99FALS123", ibanCred, 50.0);
+        }
+        catch (const std::exception& e) { // Prindem erorile
+            std::cout << "Exceptie prinsa: " << e.what() << "\n";
+        }
+
+        banca->ruleazaDetectieFrauda();
+
+        try {
+            banca->transferaFonduri(ibanEco, ibanCred, 50.0);
+            banca->transferaFonduri(ibanEco, ibanCred, 100.0);
+            banca->transferaFonduri(ibanEco, ibanCred, 600.0);
+        }
+        catch (const std::exception& e) {
+            std::cout << "Interventie sistem blocata: " << e.what() << "\n";
+        }
+        std::cout << "\n\n";
+
+        banca->ruleazaDetectieFrauda(); // Rulam metoda pentru a detecta fraudele
+
+        genereazaRaport(*contEco, "Situatia Cont Sursa");
+        genereazaRaport(*contCred, "Situatie Cont Destinatie");
     }
-    catch (const std::exception& e) {
-        std::cout << "Exceptie: " << e.what() << "\n";
-    }
 
-    banca->ruleazaDetectieFrauda();
-
-    try {
-        banca->transferaFonduri(ibanEco, ibanCred, 50.0);
-    }
-    catch (const std::exception& e) {
-        std::cout << "\nInterventie blocata: " << e.what() << "\n";
-    }
-
-    genereazaRaport(*contEco, "Situatia Cont Sursa");
-    genereazaRaport(*contCred, "Situatie Cont Destinatie");
-
-    Tranzactie Test(999.0, "RO00TEST000000");
-    genereazaRaport(Test, "Verificare Chitanta Tranzictie");
+    Tranzactie Test(999.0, "RO00TEST000000"); // Afisam o tranzactie
+    genereazaRaport(Test, "Verificare tranzactie");
 
     banca->printeazaJurnal();
 
