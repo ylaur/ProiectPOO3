@@ -25,24 +25,24 @@ int main() {
 
     // Creem clienti
     std::vector<Client> clienti = {
-        Client("Mihai Popescu", 1900515410010ULL), // Valid
-        Client("Elena Ionescu", 2920820410021ULL), // Valid
-        Client("Fraudulescu Ion", 5010203123456ULL), // Invalid
-        Client("Andrei Vasile", 5051210011230ULL), // Valid
-        Client("Maria Radu", 6080417124563ULL), // Valid
-        Client("Gigel Nesuportat", 6020304234567ULL), // Invalid
-        Client("Ion Georgescu", 1851125229994ULL), // Valid
-        Client("Ana Dumitru", 2700101351111ULL), // Valid
-        Client("Vasile Lupu", 1990909415558ULL), // Valid
-        Client("Cristina Stan", 2880228083338ULL) // Valid
+        Client("Mihai Popescu", 1900515410010ULL, ANGAJAT), // Valid
+        Client("Elena Ionescu", 2920820410021ULL, INACTIV), // Valid
+        Client("Fraudulescu Ion", 5010203123456ULL, STUDENT), // Invalid
+        Client("Andrei Vasile", 5051210011230ULL, INACTIV), // Valid
+        Client("Maria Radu", 6080417124563ULL, STUDENT), // Valid
+        Client("Gigel Nesuportat", 6020304234567ULL, ALT_STADIU), // Invalid
+        Client("Ion Georgescu", 1851125229994ULL, ANGAJAT), // Valid
+        Client("Ana Dumitru", 2700101351111ULL, INACTIV), // Valid
+        Client("Vasile Lupu", 1990909415558ULL, ALT_STADIU), // Valid
+        Client("Cristina Stan", 2880228083338ULL, STUDENT) // Valid
     };
 
-    std::vector<TipCont> tipuriCont = { // Adaugam tipuri de conturi pentru fiecare client
+    std::vector<TipCont> tipuriCont = { // Adaguam tipuri de conturi pentru fiecare client
         CONT_ECONOMIE, CONT_CREDIT, CONT_ECONOMIE, CONT_CREDIT, CONT_ECONOMIE,
         CONT_CREDIT, CONT_ECONOMIE, CONT_CREDIT, CONT_ECONOMIE, CONT_ECONOMIE
     };
 
-    std::vector<double> solduri = { // Adaugam solduri pentu fiecare client
+    std::vector<double> solduri = { // Adaumga solduri pentu fiecare client
         5000.0, 1000.0, 2000.0, 1500.0, 8000.0,
         3000.0, 4500.0, 2500.0, 6000.0, 7000.0
     };
@@ -52,7 +52,7 @@ int main() {
         try {
             Cont* contNou = factory.creeazaCont(tipuriCont[i], clienti[i], solduri[i]);
             banca->adaugaCont(contNou);
-            std::cout << "Cont deschis pentru: " << (clienti[i].getNume() ? clienti[i].getNume() : "Nume invalid") << "\n";
+            std::cout << "Cont deschis pentru: " << (clienti[i].getNume() ? clienti[i].getNume() : "Nume invalud") << "\n";
         }
         catch (const std::exception& e) {
             std::cout << "Nu s-a deschis cont pentru " << (clienti[i].getNume() ? clienti[i].getNume() : "Nume invalid")
@@ -88,7 +88,7 @@ int main() {
         try {
             banca->transferaFonduri(ibanEco, ibanCred, 50.0);
             banca->transferaFonduri(ibanEco, ibanCred, 100.0);
-            banca->transferaFonduri(ibanEco, ibanCred, 600.0);
+            banca->transferaFonduri(ibanEco, ibanCred, 60.0);
         }
         catch (const std::exception& e) {
             std::cout << "Interventie sistem blocata: " << e.what() << "\n";
@@ -105,6 +105,11 @@ int main() {
     genereazaRaport(Test, "Verificare tranzactie");
 
     banca->printeazaJurnal();
+
+    auto vec = banca->filtreazaConturi<ContEconomii>([](ContEconomii* c) { return c->getSold() > 5000.0; }); // Apelam metoda filtreazaConturi
+    for (const auto& elem : vec) {
+        std::cout << *elem << "\n\n";
+    }
 
     delete banca;
 
