@@ -5,11 +5,19 @@
 #include "Registru.h"
 #include "Tranzactie.h"
 
+enum CategorieStadiu { // Enumeratie TipStadiu
+    ANGAJAT, // Persoana anagajata
+    STUDENT, // Studenti
+    INACTIV, // Persoane sub 18 ani SAU aflate la pensie
+    ALT_STADIU // Persoane care nu intra in categoriile de mai sus
+};
+
 class Cont { // Clasa de baza Cont
 protected:
     std::string iban; // IBAN-ul contului
     Client detinator; // Clientul ce detine contul
     double sold; // Soldul contului
+    CategorieStadiu tipStadiu;
     bool esteBlocat; // Data membra folosita pentru a salva stadiul curent al contului
     Registru<Tranzactie> istoricTranzactii; // Istoricul de tranzactii
 
@@ -27,6 +35,7 @@ public:
     const Client& getDetinator() const; // Getter pentru detinator
     bool esteContBlocat() const; // Getter pentru stadiul contului
     double getSold() const; // Getter pentru sold
+    CategorieStadiu getTipStadiu() const; // Metoda ce returneaza stadiul
     std::string getIban() const; // Getter pentru IBAN
 
     void blocheazaCont(); // Metoda ce blocheaza contul
