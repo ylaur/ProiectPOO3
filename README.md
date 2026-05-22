@@ -38,4 +38,4 @@ transferaFonduri: Când se mută bani, funcția scoate întâi suma din contul s
 
 filtreazaConturi<T, U>: Aceasta este o funcție template cu doi parametri, folosită pentru căutare internă (filtrarea conturilor care îndeplinesc o anumită condiție). În main(), mă pot folosi de ea împreună cu expresii lambda pentru a extrage exact ce am nevoie. De exemplu, îi trimit funcției o regulă (precum „returnează-mi doar conturile de Economii care au peste 5000 RON”), ea merge prin toate conturile, face dynamic_cast pentru tipul corect de conturi și îmi aduce rezultatele într-un mod sigur, fiind protejată la rândul ei de un try-catch "catch-all" (catch(...)).
 
-# În concluzie, consider că proiectul îndeplinește toate cerințele. Am integrat următoarele: polimorfism, excepții propii, templateuri și design patterns, bifând astfel tot ce este necesar.
+### În concluzie, consider că proiectul îndeplinește toate cerințele. Am integrat următoarele: polimorfism, excepții propii, templateuri și design patterns, bifând astfel tot ce este necesar.
