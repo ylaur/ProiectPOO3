@@ -554,17 +554,18 @@ public:
         : Cont(detinator, sold), rataDobanda(rata) {}
 
     void depune(double suma) override { // Metoda depunere specifica clasei
-        suma += comision->getComision();
         if (esteBlocat) throw ContBlocatException(); // Daca contul este blocat in urma unei fraude, aruncam o exceptie
-        if (suma > 0)
-            sold += suma; // Adaugam suma in sold
+        if (suma > 0) {
+            suma += comision->calculeazaComision(suma);
+            sold += suma; // Adaugam suma in soldul contului
+        }
     }
 
     void retrage(double suma) override { // Metoda retragere specifica clasei
-        suma += comision->getComision();
         if (esteBlocat) throw ContBlocatException(); // Daca contul este blocat in urma unei fraude, aruncam o exceptie
         if (sold < suma) throw FonduriInsuficienteException(); // Daca soldul este negativ, nu putem extrage
         if (suma < 0) return; // Daca suma depusa este negativa, nu se intampla retragerea
+        suma += comision->getComision();
         sold -= suma;
     }
 
@@ -591,12 +592,15 @@ public:
         : Cont(detinator, sold), limitaCredit(limita) {}
 
     void depune(double suma) override { // Metoda depunere specifica clasei
-        suma += comision->getComision();
         if (esteBlocat) throw ContBlocatException(); // Daca contul este blocat in urma unei fraude, aruncam o exceptie
-        sold += suma;
+        if (suma > 0) {
+            suma += comision->calculeazaComision(suma);
+            sold += suma; // Adaugam suma in soldul contului
+        }
     }
 
     void retrage(double suma) override {  // Metoda retragere specifica clasei
+        if (suma < 0) return;
         suma += comision->getComision();
         if (esteBlocat) throw ContBlocatException(); // Daca contul este blocat in urma unei fraude, aruncam o exceptie
         if (sold + limitaCredit < suma) throw FonduriInsuficienteException();
