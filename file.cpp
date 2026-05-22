@@ -136,11 +136,19 @@ public:
     }
 };
 
+enum CategorieStadiu { // Enumeratie TipStadiu
+    ANGAJAT, // Persoana anagajata
+    STUDENT, // Studenti
+    INACTIV, // Persoane sub 18 ani SAU aflate la pensie
+    ALT_STADIU // Persoane care nu intra in categoriile de mai sus
+};
+
 class Client { // Clasa Client
 private:
     char* nume; // Numele clientului
     unsigned long long CNP; // CNP-ul clientului
     bool areCNPvalid; // Validitatea CNP-ului
+    CategorieStadiu tipStadiu;
 
     bool validareCNP(unsigned long long cnp) { // Metoda privata ce determina daca un CNP este valid
         // Format CNP: SAALLZZJJNNNC - 13 cifre
@@ -196,7 +204,7 @@ private:
     }
 
 public:
-    Client(const char* numeClient, unsigned long long cnp) { // Constructor
+    Client(const char* numeClient, unsigned long long cnp, CategorieStadiu ts) { // Constructor
         if (numeClient != nullptr) { // Determinam daca numele clientului este valid
             try {
                 nume = new char[strlen(numeClient) + 1]; // Incercam sa alocam memorie
@@ -210,11 +218,26 @@ public:
         else {
             nume = nullptr; // Daca numele nu e valid, nume devine nullptr
         }
+
         CNP = (validareCNP(cnp) ? cnp : 0); // Verificam validitatea CNP-ului
         if (CNP == 0)
             areCNPvalid = false;
         else
             areCNPvalid = true;
+
+        switch (ts) { // Determinam categoria in care se afla persoana
+            case ANGAJAT:
+                tipStadiu = ANGAJAT;
+                break;
+            case STUDENT:
+                tipStadiu = STUDENT;
+                break;
+            case INACTIV:
+                tipStadiu = INACTIV;
+                break;
+            default:
+                tipStadiu = ALT_STADIU;
+        }
     }
 
     ~Client() { // Destructor
@@ -237,8 +260,11 @@ public:
         else {
             nume = nullptr; // Daca numele nu e valid, nume devine nullptr
         }
+
         CNP = c.CNP; // Atribuim CNP-ul
         areCNPvalid = c.areCNPvalid;
+
+        tipStadiu = c.tipStadiu;
     }
 
     Client& operator=(Client c) { // Overloading pe operator=
@@ -251,6 +277,7 @@ public:
 
     bool esteCNPvalid() const { return areCNPvalid; } // Metoda ce returneaza validitatea CNP-ului
     unsigned long long getCNP() const { return CNP; } // Metoda ce returneaza CNP-ul
+    CategorieStadiu getTipStadiu() const { return tipStadiu; } // Metoda ce returneaza stadiul
     const char* getNume() const { return nume; } // Metoda ce returneaza numele
 
     void schimbaNume(const char* numeClient) {
@@ -275,6 +302,7 @@ public:
         std::swap(unu.nume, doi.nume); // Facem swap pe fiecare membru
         std::swap(unu.CNP, doi.CNP);
         std::swap(unu.areCNPvalid, doi.areCNPvalid);
+        std::swap(unu.tipStadiu, doi.tipStadiu);
     }
 
     friend std::ostream& operator<<(std::ostream& out, const Client& c) { // Overloading pe operator<<
@@ -284,11 +312,54 @@ public:
     }
 };
 
+class PercepeComision { // Clasa de baza PercepeComision (design pattern, Strategy)
+protected:
+    double comision;
+public:
+    PercepeComision(double c) : comision(c) {}
+    virtual double calculeazaComision(double suma) = 0; // Metoda virtuala pura
+    double getComision() const { return comision; }
+    virtual ~PercepeComision() = default; // Desctructor virtual
+};
+
+class ComisionStandard : public PercepeComision { // Clasa derivata ComisionStandard
+public:
+    ComisionStandard(double comision = 0.01) : PercepeComision(comision) {}
+    double calculeazaComision(double suma) { // Metoda ce calculeaza comisionul aplicat pe o suma (1%)
+        return suma * comision; // Subtituire comision
+    }
+};
+
+class ComisionAngajat : public PercepeComision { // Clasa derivata ComisionStandard
+public:
+    ComisionAngajat(double comision = 0.007) : PercepeComision(comision) {}
+    double calculeazaComision(double suma) { // Metoda ce calculeaza comisionul aplicat pe o suma (0.7%)
+        return suma * comision; // Subtituire comision
+    }
+};
+
+class ComisionStudent : public PercepeComision { // Clasa derivata ComisionStandard
+public:
+    ComisionStudent(double comision = 0) : PercepeComision(comision) {}
+    double calculeazaComision(double suma) { // Metoda ce calculeaza comisionul aplicat pe o suma (0%)
+        return comision; // In acest caz, nu se aplica comision
+    }
+};
+
+class ComisionPersoanaInactivaEconomic : public PercepeComision { // Clasa derivata ComisionStandard
+public:
+    ComisionPersoanaInactivaEconomic(double comision = 0.003) : PercepeComision(comision) {}
+    double calculeazaComision(double suma) { // Metoda ce calculeaza comisionul aplicat pe o suma (0.3%)
+        return suma * comision; // Comision destinat persoanelor inactive economic (i.e persoane < 18 ani, persoana aflate la pensie)
+    }
+};
+
 class Cont { // Clasa de baza Cont
 protected:
     std::string iban; // IBAN-ul contului
     Client detinator; // Clientul ce detine contul
     double sold; // Soldul contului
+    PercepeComision *comision;
     bool esteBlocat; // Data membra folosita pentru a salva stadiul curent al contului
     Registru<Tranzactie> istoricTranzactii; // Istoricul de tranzactii
 
@@ -345,7 +416,7 @@ protected:
         } else {
             cifraDeControl = std::to_string(checksumCurent);
         }
-        
+
         // Facem concatenare pentru a afisa IBAN-ul in formatul corect
         std::string ibanComplet = codTara + cifraDeControl + codBanca + numarCont;
 
@@ -356,9 +427,24 @@ public:
     Cont(const Client& detinatorCont, double soldInitial) // Constructor
         : detinator(detinatorCont), sold(soldInitial), esteBlocat(false) {
         iban = genereazaIban();
+        switch (detinator.getTipStadiu()) {
+            case ANGAJAT:
+                comision = new ComisionAngajat();
+                break;
+            case STUDENT:
+                comision = new ComisionStudent();
+                break;
+            case INACTIV:
+                comision = new ComisionPersoanaInactivaEconomic();
+                break;
+            default:
+                comision = new ComisionStandard();
+        }
     }
 
-    virtual ~Cont() {} // Destructor virtual
+    virtual ~Cont() { // Destructor virtual
+        delete comision;
+    }
 
     virtual void depune(double suma) = 0; // Metoda pura pentru depuneri
     virtual void retrage(double suma) = 0; // Metoda pura pentru retrageri
@@ -368,6 +454,7 @@ public:
     const Client& getDetinator() const { return detinator; } // Getter pentru detinator
     bool esteContBlocat() const { return esteBlocat; } // Getter pentru stadiul contului
     double getSold() const { return sold; } // Getter pentru sold
+
     std::string getIban() const { return iban; } // Getter pentru IBAN
 
     void blocheazaCont() { esteBlocat = true; } // Metoda ce blocheaza contul
@@ -467,12 +554,14 @@ public:
         : Cont(detinator, sold), rataDobanda(rata) {}
 
     void depune(double suma) override { // Metoda depunere specifica clasei
+        suma += comision->getComision();
         if (esteBlocat) throw ContBlocatException(); // Daca contul este blocat in urma unei fraude, aruncam o exceptie
         if (suma > 0)
             sold += suma; // Adaugam suma in sold
     }
 
     void retrage(double suma) override { // Metoda retragere specifica clasei
+        suma += comision->getComision();
         if (esteBlocat) throw ContBlocatException(); // Daca contul este blocat in urma unei fraude, aruncam o exceptie
         if (sold < suma) throw FonduriInsuficienteException(); // Daca soldul este negativ, nu putem extrage
         if (suma < 0) return; // Daca suma depusa este negativa, nu se intampla retragerea
@@ -502,11 +591,13 @@ public:
         : Cont(detinator, sold), limitaCredit(limita) {}
 
     void depune(double suma) override { // Metoda depunere specifica clasei
+        suma += comision->getComision();
         if (esteBlocat) throw ContBlocatException(); // Daca contul este blocat in urma unei fraude, aruncam o exceptie
         sold += suma;
     }
 
     void retrage(double suma) override {  // Metoda retragere specifica clasei
+        suma += comision->getComision();
         if (esteBlocat) throw ContBlocatException(); // Daca contul este blocat in urma unei fraude, aruncam o exceptie
         if (sold + limitaCredit < suma) throw FonduriInsuficienteException();
         // Daca suma este mai mare decat suma curenta din sold si depaseste de asemenea si limita de credit, aruncam o exceptie
@@ -694,6 +785,25 @@ public:
         if (index < conturi.size()) return conturi[index];
         return nullptr;
     }
+
+    template<typename T, typename U>
+    std::vector<T*> filtreazaConturi(U criteriu) { // Metoda ce returneaza conturi care indeplinesc o anumita conditie
+        std::vector<T*> conturiRezultat;
+        for (Cont* cont : conturi) { // Parcurgem conturile
+            T* contAuxiliar = dynamic_cast<T*>(cont);
+            try {
+                if (contAuxiliar != nullptr && criteriu(contAuxiliar)) { // Verificam daca contul indeplineste criteriile de filtrare
+                    conturiRezultat.push_back(contAuxiliar);
+                }
+            }
+            catch (...) { // In cazul in care U nu este o functie sau expresie lambda, prindem eroarea
+                std::cout << "Eroare fatala\n";
+                jurnalSistem.adaugaInregistrare("Eroare fatala in metoda \"filtrareConturi\"");
+                return std::vector<T*>();
+            }
+        }
+        return conturiRezultat;
+    }
 };
 
 SistemBancar* SistemBancar::instanta = nullptr; // Instantierea initiala a sistemlui bancar
@@ -714,16 +824,16 @@ int main() {
 
     // Creem clienti
     std::vector<Client> clienti = {
-        Client("Mihai Popescu", 1900515410010ULL), // Valid
-        Client("Elena Ionescu", 2920820410021ULL), // Valid
-        Client("Fraudulescu Ion", 5010203123456ULL), // Invalid
-        Client("Andrei Vasile", 5051210011230ULL), // Valid
-        Client("Maria Radu", 6080417124563ULL), // Valid
-        Client("Gigel Nesuportat", 6020304234567ULL), // Invalid
-        Client("Ion Georgescu", 1851125229994ULL), // Valid
-        Client("Ana Dumitru", 2700101351111ULL), // Valid
-        Client("Vasile Lupu", 1990909415558ULL), // Valid
-        Client("Cristina Stan", 2880228083338ULL) // Valid
+        Client("Mihai Popescu", 1900515410010ULL, ANGAJAT), // Valid
+        Client("Elena Ionescu", 2920820410021ULL, INACTIV), // Valid
+        Client("Fraudulescu Ion", 5010203123456ULL, STUDENT), // Invalid
+        Client("Andrei Vasile", 5051210011230ULL, INACTIV), // Valid
+        Client("Maria Radu", 6080417124563ULL, STUDENT), // Valid
+        Client("Gigel Nesuportat", 6020304234567ULL, ALT_STADIU), // Invalid
+        Client("Ion Georgescu", 1851125229994ULL, ANGAJAT), // Valid
+        Client("Ana Dumitru", 2700101351111ULL, INACTIV), // Valid
+        Client("Vasile Lupu", 1990909415558ULL, ALT_STADIU), // Valid
+        Client("Cristina Stan", 2880228083338ULL, STUDENT) // Valid
     };
 
     std::vector<TipCont> tipuriCont = { // Adaguam tipuri de conturi pentru fiecare client
@@ -777,7 +887,7 @@ int main() {
         try {
             banca->transferaFonduri(ibanEco, ibanCred, 50.0);
             banca->transferaFonduri(ibanEco, ibanCred, 100.0);
-            banca->transferaFonduri(ibanEco, ibanCred, 600.0);
+            banca->transferaFonduri(ibanEco, ibanCred, 60.0);
         }
         catch (const std::exception& e) {
             std::cout << "Interventie sistem blocata: " << e.what() << "\n";
@@ -794,6 +904,11 @@ int main() {
     genereazaRaport(Test, "Verificare tranzactie");
 
     banca->printeazaJurnal();
+
+    auto vec = banca->filtreazaConturi<ContEconomii>([](ContEconomii* c) { return c->getSold() > 5000.0; }); // Apelam metoda filtreazaConturi
+    for (const auto& elem : vec) {
+        std::cout << *elem << "\n\n";
+    }
 
     delete banca;
 
