@@ -8,7 +8,7 @@ Clasa Client reține detaliile proprietarului unui cont. Aici am vrut să demons
 Cea mai interesantă metodă de aici este validareCNP. Nu verific doar dacă CNP-ul are 13 cifre, ci am scris un algoritm real care validează structura lui: verifică anul, luna, ziua, codul de județ și calculează Cifra de Control, ca să mă asigur că nu se pot crea clienți cu date false.
 
 # 2. Clasa Tranzactie
-Aceasta salvează detaliile unui transfer bancar. Chestiă interesanta la această clasă este că nu îi cer utilizatorului să introducă data și ora de mână. Am folosit biblioteca <ctime> ca să fac un apel direct la sistemul de operare (localtime). Când se creează o tranzacție, clasa face singură conversiile și își formatează data sub formă de text ("YYYY/MM/DD") și ora exactă, adăugând automat zerourile necesare pentru un format ușor de prelucrat.
+Aceasta salvează detaliile unui transfer bancar. Chestia interesanta la această clasă este că nu îi cer utilizatorului să introducă data și ora de mână. Am folosit biblioteca <ctime> ca să fac un apel direct la sistemul de operare (localtime). Când se creează o tranzacție, clasa face singură conversiile și își formatează data sub formă de text ("YYYY/MM/DD") și ora exactă, adăugând automat zerourile necesare pentru un format ușor de prelucrat.
 
 # 3. Programarea Generică: Clasa template Registru<T>
 Pentru a nu repeta codul, am creat un template numit Registru<T>. Acesta funcționează folosind containerul std::vector din C++. Avantajul este că am putut refolosi exact același cod în două locuri complet diferite: o dată la nivelul conturilor, sub forma Registru<Tranzactie>, pentru a ține istoricul fiecărui client, și a doua oară la nivelul băncii, ca Registru<std::string>, pentru a avea un jurnal de sistem (log-uri) general.
